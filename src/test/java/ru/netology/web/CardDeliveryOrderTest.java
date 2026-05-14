@@ -2,6 +2,7 @@ package ru.netology.web;
 
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selenide;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Keys;
 
@@ -18,9 +19,13 @@ public class CardDeliveryOrderTest {
         return LocalDate.now().plusDays(days).format(DateTimeFormatter.ofPattern(pattern));
     }
 
+    @BeforeEach
+    public void setup() {
+        Selenide.open("http://localhost:9999");
+    }
+
     @Test
     public void shouldSubmitForm() {
-        Selenide.open("http://localhost:9999");
         String planningDate = generateDate(3, "dd.MM.yyyy");
 
         $("[data-test-id=city] input").setValue("Москва");
@@ -29,25 +34,35 @@ public class CardDeliveryOrderTest {
         $("[data-test-id=phone] input").setValue("+79271234567");
         $("[data-test-id=agreement]").click();
         $(".button_view_extra").click();
-        $("[data-test-id=notification]").should(Condition.text("Встреча успешно забронирована на"), Duration.ofSeconds(15)).should(Condition.visible);
+        $("[data-test-id=notification]")
+                .should(Condition.visible, Duration.ofSeconds(15))
+                .shouldHave(Condition.text("Успешно! Встреча успешно забронирована на " + planningDate));
     }
 
     @Test
     public void shouldSubmitFormWithDropListAndCalendar() {
-        Selenide.open("http://localhost:9999");
-        String planningDate = generateDate(7, "dd.MM.yyyy");
+        LocalDate targetDate = LocalDate.now().plusDays(7);
+        String planningDate = targetDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        String targetDay = String.valueOf(targetDate.getDayOfMonth());
 
         $("[data-test-id=city] input").setValue("Мо");
         $$(".menu-item__control").findBy(Condition.text("Москва")).click();
 
         $("[data-test-id=date] .icon-button").click();
-        String targetDay = planningDate.split("\\.")[0];
+
+        while ($$(".calendar__layout tbody td").filterBy(Condition.text(targetDay)).isEmpty()) {
+            $("[data-step='1']").click();
+            Selenide.sleep(300);
+        }
+
         $$(".calendar__layout tbody td").findBy(Condition.text(targetDay)).click();
 
         $("[data-test-id=name] input").setValue("Иванов Иван");
         $("[data-test-id=phone] input").setValue("+79271234567");
         $("[data-test-id=agreement]").click();
         $(".button_view_extra").click();
-        $("[data-test-id=notification]").should(Condition.text("Встреча успешно забронирована на"), Duration.ofSeconds(15)).should(Condition.visible);
+        $("[data-test-id=notification]")
+                .should(Condition.visible, Duration.ofSeconds(15))
+                .shouldHave(Condition.text("Успешно! Встреча успешно забронирована на " + planningDate));
     }
 }
